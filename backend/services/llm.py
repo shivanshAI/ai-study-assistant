@@ -6,8 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL = "llama-3.1-8b-instant"
-
+MODEL = "llama-3.3-70b-versatile"
 def get_answer(question: str, context_chunks: list[str]) -> str:
     context = "\n\n".join(context_chunks)
     response = client.chat.completions.create(
@@ -35,13 +34,15 @@ def get_quiz(context_chunks: list[str], num_questions: int) -> list[dict]:
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": "You are a study assistant. Generate MCQ quiz questions from the notes. Respond only in JSON format as a list of objects with keys: question, options (list of 4), answer."},
+            {"role": "system", "content": "You are a study assistant. Generate MCQ quiz questions from the notes. Respond ONLY with a valid JSON array, no explanation, no markdown, no backticks. Format: [{\"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"answer\": \"A\"}]"},
             {"role": "user", "content": f"Generate {num_questions} MCQ questions from these notes:\n{context}"}
         ]
     )
-    text = response.choices[0].message.content
+    text = response.choices[0].message.content.strip()
     text = re.sub(r"```json|```", "", text).strip()
-    return json.loads(text)
+    start = text.find("[")
+    end = text.rfind("]") + 1
+    return json.loads(text[start:end])
 
 def get_flashcards(context_chunks: list[str], num_cards: int) -> list[dict]:
     context = "\n\n".join(context_chunks)
